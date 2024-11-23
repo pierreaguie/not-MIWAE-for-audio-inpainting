@@ -26,7 +26,7 @@ class notMIWAE(nn.Module):
         self.p_logvar = nn.Linear(decoder_output_dim, encoder_input_dim)
 
         # Prior distribution
-        self.p_z = Normal(torch.zeros(1), torch.ones(1))
+        self.p_z = Independent(Normal(torch.zeros(1), torch.ones(1)), 1)
 
 
     def forward(self, x : torch.Tensor, s : torch.Tensor, K : int = 1) -> torch.Tensor:
@@ -122,5 +122,5 @@ class notMIWAE(nn.Module):
         log_q_z_given_x = q_z_given_x.log_prob(z)
         log_p_s_given_x = p_s_given_x.log_prob(s_k)
         log_p_z = self.p_z.log_prob(z)
-
+        
         return log_p_x_given_z, log_q_z_given_x, log_p_s_given_x, log_p_z, x_missing
