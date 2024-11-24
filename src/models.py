@@ -114,7 +114,7 @@ class notMIWAE(nn.Module):
         # Missing model: p(s|x_observed, x_missing)
         p_s_given_x = Independent(Bernoulli(self.missing_model(x_imputed)),1)
 
-        # Importance weights:
+        # Log probabilities:
         x_observed_k = torch.Tensor.repeat(x_observed, [K,1,1])            # Size (K,bs,input_dim)
         s_k = torch.Tensor.repeat(s, [K,1,1])                              
         
