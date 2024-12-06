@@ -8,7 +8,14 @@ import numpy as np
 
 class notMIWAE(nn.Module):
 
-    def __init__(self, encoder, decoder, missing_model, encoder_input_dim, encoder_output_dim, decoder_output_dim, latent_dim):
+    def __init__(self, 
+                 encoder : nn.Module,
+                 decoder : nn.Module, 
+                 missing_model : nn.Module,
+                 encoder_input_dim : int,
+                 encoder_output_dim : int, 
+                 decoder_output_dim : int, 
+                 latent_dim : int):
         super().__init__()
 
         self.encoder = encoder
@@ -124,3 +131,24 @@ class notMIWAE(nn.Module):
         log_p_z = self.p_z.log_prob(z)
         
         return log_p_x_given_z, log_q_z_given_x, log_p_s_given_x, log_p_z, x_missing
+
+
+
+class LogisticMissingModel(nn.Module):
+
+    def __init__(self, fixed_params : bool = False, W : float = 50., b : float = 0.8):
+        """ 
+        Missing model of the form p(s_j|x_j^m) = sigmoid(W * (abs(x_j^m) - b))
+        """
+        super().__init__()
+
+        self.W = nn.Parameter(torch.tensor(W), requires_grad = not fixed_params)
+        self.b = nn.Parameter(torch.tensor(b), requires_grad = not fixed_params)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x : torch.Tensor) -> torch.Tensor:
+        return self.sigmoid(self.W * (torch.abs(x) - self.b))
+    
+
+
+## TODO: define the encoder, decoder
