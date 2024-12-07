@@ -6,15 +6,64 @@ from torch.distributions import Normal, Bernoulli, Independent
 import numpy as np
 
 
+## Change les deux suivant à ta guise Tous
+
+class AudioEncoder(nn.Module):
+
+    def __init__(self, T : int, output_dim : int):
+        super().__init__()
+
+        self.T = T
+        self.output_dim = output_dim
+
+        self.conv1 = nn.Conv1d(1, 16, 3, padding = 1)
+        self.conv2 = nn.Conv1d(16, 32, 3, padding = 1)
+        self.conv3 = nn.Conv1d(32, 64, 3, padding = 1)
+        self.fc = nn.Linear(64 * T, output_dim)
+
+    def forward(self, x : torch.Tensor) -> torch.Tensor:
+        x = x.unsqueeze(1)
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+        x = x.view(-1, 64 * self.T)
+        x = self.fc(x)
+        return x
+    
+
+class AudioDecoder(nn.Module):
+
+    def __init__(self, T : int, latent_dim : int):
+        super().__init__()
+
+        self.T = T
+        self.latent_dim = latent_dim
+
+        self.fc = nn.Linear(latent_dim, 64 * T)
+        self.conv3 = nn.Conv1d(64, 32, 3, padding = 1)
+        self.conv2 = nn.Conv1d(32, 16, 3, padding = 1)
+        self.conv1 = nn.Conv1d(16, 1, 3, padding = 1)
+
+
+    def forward(self, z : torch.Tensor) -> torch.Tensor:
+        x = self.fc(z)
+        x = x.view(-1, 64, self.T)
+        x = F.relu(self.conv3(x))
+        x = F.relu(self.conv2(x))
+        x = self.conv1(x)
+        return x.squeeze(1)
+
+
+
 class notMIWAE(nn.Module):
 
     def __init__(self, 
                  encoder : nn.Module,
                  decoder : nn.Module, 
                  missing_model : nn.Module,
-                 encoder_input_dim : int,
-                 encoder_output_dim : int, 
-                 decoder_output_dim : int, 
+                 T : int,
+                 encoder_output_dim : int,
+                 decoder_output_dim : int,
                  latent_dim : int):
         super().__init__()
 
@@ -22,15 +71,15 @@ class notMIWAE(nn.Module):
         self.decoder = decoder
         self.missing_model = missing_model
 
-        self.encoder_input_dim = encoder_input_dim
+        self.T = T
         self.encoder_output_dim = encoder_output_dim
         self.decoder_output_dim = decoder_output_dim
         self.latent_dim = latent_dim
 
-        self.q_mu = nn.Linear(encoder_output_dim, latent_dim)
-        self.q_logvar = nn.Linear(encoder_output_dim, latent_dim)
-        self.p_mu = nn.Linear(decoder_output_dim, encoder_input_dim)
-        self.p_logvar = nn.Linear(decoder_output_dim, encoder_input_dim)
+        self.q_mu = nn.Linear(self.encoder_output_dim, latent_dim)
+        self.q_logvar = nn.Linear(self.encoder_output_dim, latent_dim)
+        self.p_mu = nn.Linear(self.decoder_output_dim, self.T)
+        self.p_logvar = nn.Linear(self.decoder_output_dim, self.T)
 
         # Prior distribution
         self.p_z = Independent(Normal(torch.zeros(1), torch.ones(1)), 1)
@@ -83,8 +132,8 @@ class notMIWAE(nn.Module):
         """         
         Inputs:
         ------
-        - x: Tensor of shape (batch_size, input_dim)
-        - s: Tensor of shape (batch_size, input_dim) with 1s where x is observed and 0s where x is missing
+        - x: Tensor of shape (batch_size, T)
+        - s: Tensor of shape (batch_size, T) with 1s where x is observed and 0s where x is missing
         - K: Number of samples to draw from the posterior (default = 1)
 
         Outputs:
@@ -93,11 +142,11 @@ class notMIWAE(nn.Module):
         - log_q_z_given_x: Tensor of shape (K, batch_size) with the log probabilities of the posterior
         - log_p_s_given_x: Tensor of shape (K, batch_size) with the log probabilties of the missing model
         - log_p_z: Tensor of shape (K, batch_size) with the log probabilities of the prior
-        - x_missing: Tensor of shape (K, batch_size, input_dim) with the missing data and 0s where x is observed        
+        - x_missing: Tensor of shape (K, batch_size, T) with the missing data and 0s where x is observed        
         """
         
         # s[i,j] = 1 iff x[i,j] is observed. If x[i,j] is missing, pad with 0.
-        x_observed = s * x                                                # Size (bs,input_dim)
+        x_observed = s * x                                                # Size (bs, T)
 
         # Encoder: q(z|x_observed)
         h = self.encoder(x_observed)
@@ -106,7 +155,7 @@ class notMIWAE(nn.Module):
 
         # Sampling z from q(z|x_observed) K times
         q_z_given_x = Independent(Normal(loc = mu_z, scale = torch.exp(0.5 * logvar_z)), 1)
-        z = q_z_given_x.rsample([K])                                      # Size (K,bs,latent_dim)
+        z = q_z_given_x.rsample([K])                                      # Size (K, bs, latent_dim)
         
         # Decoder: p(x|z_k) for all k = 1, ..., K
         h = self.decoder(z)
@@ -122,7 +171,7 @@ class notMIWAE(nn.Module):
         p_s_given_x = Independent(Bernoulli(self.missing_model(x_imputed)),1)
 
         # Log probabilities:
-        x_observed_k = torch.Tensor.repeat(x_observed, [K,1,1])            # Size (K,bs,input_dim)
+        x_observed_k = torch.Tensor.repeat(x_observed, [K,1,1])            # Size (K, bs, T)
         s_k = torch.Tensor.repeat(s, [K,1,1])                              
         
         log_p_x_given_z = p_x_given_z.log_prob(x_observed_k)               # Size (K, bs)
@@ -149,6 +198,3 @@ class LogisticMissingModel(nn.Module):
     def forward(self, x : torch.Tensor) -> torch.Tensor:
         return self.sigmoid(self.W * (torch.abs(x) - self.b))
     
-
-
-## TODO: define the encoder, decoder

@@ -36,6 +36,7 @@ def collate(batch):
     return x, s
 
 
+
 def generate_synthetic_dataset(N, T, K, clipping_model : str = "soft", W : float = 50, thresh : float = .8):
     """ 
     Generates a synthetic dataset of N samples of length T. Each sample is a mixture of K sinusoids, clipped using the chosen clipping model.
@@ -55,7 +56,7 @@ def generate_synthetic_dataset(N, T, K, clipping_model : str = "soft", W : float
             s[i] = hard_clipping(x[i], thresh)
         x[i] = (1-s[i]) * x[i]
 
-    return ClippedDataset(x, s)
+    return ClippedDataset(x, s)    
 
 
 
