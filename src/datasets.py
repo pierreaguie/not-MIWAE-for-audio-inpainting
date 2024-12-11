@@ -66,7 +66,7 @@ def load_dataset(dataset_dir : str, n_samples : int, window_size : int, target_s
     x = torch.zeros(n_samples, window_size)
     s = torch.zeros(n_samples, window_size)
     list_files = os.listdir(dataset_dir)
-    selected_files = random.choices
+    selected_files = random.choices(list_files, k=n_samples)
     
     for i,file in zip(range(n_samples),selected_files):
         file_path = os.path.join(dataset_dir, file)
