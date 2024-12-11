@@ -8,8 +8,9 @@ from src.utils import soft_clipping, hard_clipping, normalize
 
 class ClippedDataset(Dataset):
 
-    def __init__(self, x : torch.Tensor, s : torch.Tensor):
+    def __init__(self, x : torch.Tensor, x_clipped : torch.Tensor, s : torch.Tensor):
         self.x = x
+        self.x_clipped = x_clipped
         self.s = s
         self.N, self.T = x.shape
 
@@ -17,7 +18,7 @@ class ClippedDataset(Dataset):
         return self.N
 
     def __getitem__(self, idx):
-        return self.x[idx], self.s[idx]
+        return self.x[idx], self.x_clipped[idx], self.s[idx]
     
 
 def train_val_test_split(dataset, train_size : float = .8, val_size : float = .1, test_size : float = .1):

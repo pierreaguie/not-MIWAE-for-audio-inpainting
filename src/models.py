@@ -7,7 +7,7 @@ import numpy as np
 
 
 ## Change les deux suivant à ta guise Tous
-
+## Penser à tester au cas ou l'average pooling pour la projection des features dans l'espace latent
 class AudioEncoder(nn.Module):
 
     def __init__(self, T : int, output_dim : int):
