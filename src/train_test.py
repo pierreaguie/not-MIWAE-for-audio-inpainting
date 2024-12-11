@@ -49,7 +49,7 @@ def train(model : nn.Module, optimizer : Optimizer, train_loader : DataLoader, v
         print(f"Training loss for epoch {epoch} is {train_loss}")
         writer.add_scalar("Loss/Train", train_loss, epoch)
         if epoch % n_epochs_val == 0:
-            val_loss, val_MSE = val_loss_and_MSE(model, val_loader, K)
+            val_loss, val_MSE = val_loss_and_MSE(model, val_loader, device, K)
             print(f"Validation loss / Mean Squared Error for epoch {epoch} is {val_loss}/{val_MSE}")
             writer.add_scalar("Loss/Validation", val_loss, epoch)
             writer.add_scalar("MSE/Validation", val_MSE, epoch)

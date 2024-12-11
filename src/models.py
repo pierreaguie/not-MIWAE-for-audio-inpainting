@@ -33,7 +33,7 @@ class AudioEncoder(nn.Module):
 
 class AudioDecoder(nn.Module):
 
-    def __init__(self, T : int, latent_dim : int):
+    def __init__(self, T : int, latent_dim : int, K : int):
         super().__init__()
 
         self.T = T
@@ -43,7 +43,7 @@ class AudioDecoder(nn.Module):
         self.conv3 = nn.Conv1d(64, 32, 3, padding = 1)
         self.conv2 = nn.Conv1d(32, 16, 3, padding = 1)
         self.conv1 = nn.Conv1d(16, 1, 3, padding = 1)
-
+        self.K = K
 
     def forward(self, z : torch.Tensor) -> torch.Tensor:
         x = self.fc(z)
@@ -64,7 +64,8 @@ class notMIWAE(nn.Module):
                  T : int,
                  encoder_output_dim : int,
                  decoder_output_dim : int,
-                 latent_dim : int):
+                 latent_dim : int,
+                 device : torch.device):
         super().__init__()
 
         self.encoder = encoder
@@ -82,9 +83,11 @@ class notMIWAE(nn.Module):
         self.p_logvar = nn.Linear(self.decoder_output_dim, self.T)
 
         # Prior distribution
-        self.p_z = Independent(Normal(torch.zeros(1), torch.ones(1)), 1)
+        self.p_z = Independent(Normal(torch.zeros(1).to(device), torch.ones(1).to(device)), 1)
 
 
+        self.device = device
+        
     def forward(self, x : torch.Tensor, s : torch.Tensor) -> torch.Tensor:
         """ 
         Returns the mean and the log variance of the posterior distribution of z given x
@@ -107,7 +110,7 @@ class notMIWAE(nn.Module):
         mu_z = self.q_mu(h)
         logvar_z = self.q_logvar(h)
 
-        return mu_z, logvar_z
+        return mu_z.to(self.device), logvar_z.to(self.device)
 
     def loss(self, x : torch.Tensor, s : torch.Tensor, K : int = 1) -> torch.Tensor:
         """
@@ -125,6 +128,7 @@ class notMIWAE(nn.Module):
         """
 
         log_p_x_given_z, log_q_z_given_x, log_p_s_given_x, log_p_z, _ = self.log_probabilities_and_missing_data(x, s, K)
+        
         loss = -torch.mean(torch.logsumexp(log_p_x_given_z + log_p_s_given_x - log_q_z_given_x + log_p_z - np.log(K), dim = 0))
      
         return loss
@@ -176,13 +180,15 @@ class notMIWAE(nn.Module):
         h = self.encoder(x_observed)
         mu_z = self.q_mu(h)
         logvar_z = self.q_logvar(h)
-
+        
         # Sampling z from q(z|x_observed) K times
         q_z_given_x = Independent(Normal(loc = mu_z, scale = torch.exp(0.5 * logvar_z)), 1)
-        z = q_z_given_x.rsample([K])                                      # Size (K, bs, latent_dim)
+        z = q_z_given_x.rsample([K]).to(self.device)                                      # Size (K, bs, latent_dim)
         
         # Decoder: p(x|z_k) for all k = 1, ..., K
+        
         h = self.decoder(z)
+        h = h.view(K,-1,self.decoder_output_dim)
         mu_x = self.p_mu(h)
         logvar_x = self.p_logvar(h)
         p_x_given_z = Independent(Normal(mu_x, torch.exp(0.5 * logvar_x)),1)
@@ -203,7 +209,7 @@ class notMIWAE(nn.Module):
         log_p_s_given_x = p_s_given_x.log_prob(s_k)
         log_p_z = self.p_z.log_prob(z)
         
-        return log_p_x_given_z, log_q_z_given_x, log_p_s_given_x, log_p_z, x_missing
+        return log_p_x_given_z.to(self.device), log_q_z_given_x.to(self.device), log_p_s_given_x.to(self.device), log_p_z.to(self.device), x_missing.to(self.device)
 
 
 
