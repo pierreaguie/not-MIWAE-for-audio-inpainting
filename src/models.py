@@ -85,7 +85,31 @@ class notMIWAE(nn.Module):
         self.p_z = Independent(Normal(torch.zeros(1), torch.ones(1)), 1)
 
 
-    def forward(self, x : torch.Tensor, s : torch.Tensor, K : int = 1) -> torch.Tensor:
+    def forward(self, x : torch.Tensor, s : torch.Tensor) -> torch.Tensor:
+        """ 
+        Returns the mean and the log variance of the posterior distribution of z given x
+         
+        Inputs:
+        ------
+        - x: Tensor of shape (batch_size, T)
+        - s: Tensor of shape (batch_size, T) with 1s where x is observed and 0s where x is missing
+
+        Outputs:
+        -------
+        - mu_z: Tensor of shape (batch_size, latent_dim) with the mean of the posterior distribution of z given x
+        - logvar_z: Tensor of shape (batch_size, latent_dim) with the log variance of the posterior distribution of z given x
+        """
+        # s[i,j] = 1 iff x[i,j] is observed. If x[i,j] is missing, pad with 0.
+        x_observed = s * x                                                # Size (bs, T)
+
+        # Encoder: q(z|x_observed)
+        h = self.encoder(x_observed)
+        mu_z = self.q_mu(h)
+        logvar_z = self.q_logvar(h)
+
+        return mu_z, logvar_z
+
+    def loss(self, x : torch.Tensor, s : torch.Tensor, K : int = 1) -> torch.Tensor:
         """
         Computes the not-MIWAE loss
         
