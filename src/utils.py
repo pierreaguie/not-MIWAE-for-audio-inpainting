@@ -16,8 +16,11 @@ def soft_clipping(x : torch.Tensor, W : float, b : float) -> torch.Tensor:
     ----------------
     - s (torch.Tensor): missing mask
     """
-    logits = W * (torch.abs(x) - b)
-    p = torch.sigmoid(logits)
+    
+    logits = -W * (torch.abs(x) - b)
+    
+    p = torch.nn.functional.sigmoid(logits)
+    
     s = torch.bernoulli(p)
     return s
 

@@ -7,7 +7,7 @@ import torchaudio
 from torchaudio.transforms import Resample
 import random
 from src.utils import soft_clipping, hard_clipping, normalize
-
+import time
 
 class ClippedDataset(Dataset):
 
@@ -69,20 +69,25 @@ def load_dataset(dataset_dir : str, n_samples : int, window_size : int, target_s
     selected_files = random.choices(list_files, k=n_samples)
     
     for i,file in zip(range(n_samples),selected_files):
+        if i%100==0:
+            print(i)
         file_path = os.path.join(dataset_dir, file)
-        waveform, sample_rate = torchaudio.load(file_path)
+        
+        start_frame = random.randint(660000,1320000)
+        waveform, sample_rate = torchaudio.load(file_path,frame_offset=start_frame,num_frames=132000)
+        
         
         if sample_rate != target_sample_rate:
             resampler = Resample(orig_freq=sample_rate, new_freq=target_sample_rate)
             waveform = resampler(waveform)
             sample_rate = target_sample_rate
-            
+        
 
         num_samples = waveform.size(1)
         start_point = random.randint(0, num_samples - window_size)
         segment = waveform[:,start_point:start_point+window_size]
         x[i,:] = segment
-        x[i] = normalize(x[i])
+        x[i] = torch.nn.functional.normalize(x[i],dim=0)
         if clipping_model == "soft":
             s[i] = soft_clipping(x[i], W, thresh)
         elif clipping_model == "hard":
