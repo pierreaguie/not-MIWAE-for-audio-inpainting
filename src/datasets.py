@@ -87,7 +87,7 @@ def load_dataset(dataset_dir : str, n_samples : int, window_size : int, target_s
         start_point = random.randint(0, num_samples - window_size)
         segment = waveform[:,start_point:start_point+window_size]
         x[i,:] = segment
-        x[i] = torch.nn.functional.normalize(x[i],dim=0)
+        x[i] = torch.nn.functional.normalize(x[i],p=float("inf"),dim=0)
         if clipping_model == "soft":
             s[i] = soft_clipping(x[i], W, thresh)
         elif clipping_model == "hard":
