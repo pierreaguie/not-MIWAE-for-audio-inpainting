@@ -16,10 +16,10 @@ def train_epoch(model : nn.Module, optimizer : Optimizer, train_loader : DataLoa
     loss = 0
     mean_loss = 0.0
     with tqdm(train_loader, desc=f"Epoch {epoch+1}/{n_epochs}", unit="batch") as tepoch:
-        for x, x_clipped, s in tepoch:
-            x_clippped, s = x_clipped.to(device), s.to(device)
+        for x, s in tepoch:
+            x, s = x.to(device), s.to(device)
             optimizer.zero_grad()
-            loss = model.loss(x_clipped, s, K)
+            loss = model.loss(x, s, K)
             loss.backward()
             mean_loss += loss.item() 
             optimizer.step()
@@ -30,11 +30,11 @@ def val_loss_and_MSE(model, val_loader, device, K):
     model.eval()
     mean_loss = 0
     MSE = 0
-    for x, x_clipped, s in val_loader:
-        x, x_clipped, s = x.to(device), x_clipped.to(device), s.to(device)
-        loss = model.loss(x_clipped, s, K)
+    for x, s in val_loader:
+        x, s = x.to(device), s.to(device)
+        loss = model.loss(x, s, K)
         mean_loss += loss.item()
-        x_imputed = model.impute(x_clipped, s, K)
+        x_imputed = model.impute(x, s, K)
         MSE += nn.MSELoss()(x_imputed, x)
     return mean_loss / len(val_loader), MSE / len(val_loader) 
     
