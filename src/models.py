@@ -226,5 +226,5 @@ class LogisticMissingModel(nn.Module):
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x : torch.Tensor) -> torch.Tensor:
-        return self.sigmoid(-self.W * (torch.abs(x) - self.b))
+        return self.sigmoid(self.W * (torch.abs(x) - self.b))
     
