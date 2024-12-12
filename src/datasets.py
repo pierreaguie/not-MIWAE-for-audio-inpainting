@@ -8,8 +8,19 @@ from torchaudio.transforms import Resample
 import random
 from src.utils import soft_clipping, hard_clipping, normalize
 import time
+import kagglehub
+
 
 class ClippedDataset(Dataset):
+    """ 
+    ClippedDataset class. A dataset of clipped signals.
+
+    Args:
+    x (torch.Tensor): the input, true signals
+    s (torch.Tensor): the clipping masks (s = 1 if the signal is clipped, s = 0 otherwise)
+
+    When passed in notMIWAE, the input to the autoencoder is x * s, so that the missing values are not used to train the model.
+    """
 
     def __init__(self, x : torch.Tensor, s : torch.Tensor):
         self.x = x
@@ -99,20 +110,3 @@ def load_dataset(dataset_dir : str, n_samples : int, window_size : int, target_s
                 s[i*10+j] = hard_clipping(x[i*10+j], thresh)
         
     return ClippedDataset(x, s)
-        
-            
-        
-        
-    
-    
-
-
-
-
-
-
-
-
-
-
-## TODO: add a function to load a real audio dataset (e.g. MUSDB)
