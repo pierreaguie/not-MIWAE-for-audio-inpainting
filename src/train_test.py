@@ -51,6 +51,8 @@ def train(model : nn.Module, optimizer : Optimizer, train_loader : DataLoader, v
         if epoch % n_epochs_val == 0:
             val_loss, val_MSE = val_loss_and_MSE(model, val_loader, device, K)
             print(f"Validation loss / Mean Squared Error for epoch {epoch} is {val_loss}/{val_MSE}")
+            # Save the checkpoints
+            torch.save(model.state_dict(), f'checkpoints/model_{epoch}.pth')
             writer.add_scalar("Loss/Validation", val_loss, epoch)
             writer.add_scalar("MSE/Validation", val_MSE, epoch)
     
