@@ -4,7 +4,7 @@ import torch
 def soft_clipping(x : torch.Tensor, W : float, b : float) -> torch.Tensor:
     """ 
     Returns the missing mask for the input tensor using a soft clipping model:
-        P(s = 1 | x) = sigmoid(W * (|x| - b))
+        P(s = 1 | x) = sigmoid(-W * (|x| - b))
 
     Inputs:
     ----------------

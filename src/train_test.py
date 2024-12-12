@@ -5,7 +5,6 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.optim import Optimizer, Adam
 from tqdm import tqdm
 import os
-## TODO: define train_epoch, test_epoch, train_model
 
 
 def train_epoch(model : nn.Module, optimizer : Optimizer, train_loader : DataLoader, device : torch.device, epoch : int, n_epochs : int,K : int = 5,) -> float:

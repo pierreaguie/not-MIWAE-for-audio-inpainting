@@ -217,7 +217,7 @@ class LogisticMissingModel(nn.Module):
 
     def __init__(self, fixed_params : bool = False, W : float = 50., b : float = 0.8):
         """ 
-        Missing model of the form p(s_j|x_j^m) = sigmoid(W * (abs(x_j^m) - b))
+        Missing model of the form p(s_j = 1|x_j^m) = sigmoid(-W * (abs(x_j^m) - b))      (i.e. the probability of x_j missing is very high if |x_j| > b) 
         """
         super().__init__()
 
@@ -226,5 +226,5 @@ class LogisticMissingModel(nn.Module):
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x : torch.Tensor) -> torch.Tensor:
-        return self.sigmoid(self.W * (torch.abs(x) - self.b))
+        return self.sigmoid(-self.W * (torch.abs(x) - self.b))
     
