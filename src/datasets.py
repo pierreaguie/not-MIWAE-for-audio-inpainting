@@ -66,32 +66,37 @@ def load_dataset(dataset_dir : str, n_samples : int, window_size : int, target_s
     x = torch.zeros(n_samples, window_size)
     s = torch.zeros(n_samples, window_size)
     list_files = os.listdir(dataset_dir)
-    selected_files = random.choices(list_files, k=n_samples)
+    selected_files = random.choices(list_files, k=n_samples//10)
     
     for i,file in zip(range(n_samples),selected_files):
-        if i%100==0:
-            print(i)
+        
         file_path = os.path.join(dataset_dir, file)
         
         start_frame = random.randint(660000,1320000)
-        waveform, sample_rate = torchaudio.load(file_path,frame_offset=start_frame,num_frames=132000)
-        
+        waveform, sample_rate = torchaudio.load(file_path,frame_offset=start_frame,num_frames=440000)
+        # We take ten seconds of audio
         
         if sample_rate != target_sample_rate:
             resampler = Resample(orig_freq=sample_rate, new_freq=target_sample_rate)
             waveform = resampler(waveform)
             sample_rate = target_sample_rate
+        waveform = torch.nn.functional.normalize(waveform,p=float("inf"),dim=1)
         
-
+        # We resample it and we normalize it 
+        
+        # Then we take 10 part of this audio
         num_samples = waveform.size(1)
-        start_point = random.randint(0, num_samples - window_size)
-        segment = waveform[:,start_point:start_point+window_size]
-        x[i,:] = segment
-        x[i] = torch.nn.functional.normalize(x[i],p=float("inf"),dim=0)
-        if clipping_model == "soft":
-            s[i] = soft_clipping(x[i], W, thresh)
-        elif clipping_model == "hard":
-            s[i] = hard_clipping(x[i], thresh)
+        start_points = random.sample(range(0, num_samples - window_size),10)
+        
+        
+        for j in range(10):
+            x[i*10+j,:] = waveform[:,start_points[j]:start_points[j]+window_size]
+        
+        
+            if clipping_model == "soft":
+                s[i*10+j] = soft_clipping(x[i*10+j], W, thresh)
+            elif clipping_model == "hard":
+                s[i*10+j] = hard_clipping(x[i*10+j], thresh)
         
     return ClippedDataset(x, s)
         
