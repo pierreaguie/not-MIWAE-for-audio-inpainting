@@ -177,7 +177,10 @@ class notMIWAE(nn.Module):
         x_observed = s * x                                                # Size (bs, T)
 
         # Encoder: q(z|x_observed)
+        print(f"x_observed {x_observed[0]}")
+        
         h = self.encoder(x_observed)
+        print(f"h {h[0]}")
         mu_z = self.q_mu(h)
         logvar_z = self.q_logvar(h)
         
