@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim import Optimizer, Adam
 from tqdm import tqdm
-
+import os
 ## TODO: define train_epoch, test_epoch, train_model
 
 
@@ -44,6 +44,7 @@ def train(model : nn.Module, optimizer : Optimizer, train_loader : DataLoader, v
     Complete training function with tensorboard logging.
     """
     writer = SummaryWriter(log_dir=log_dir)
+    os.makedirs("checkpoint", exist_ok=True)
     for epoch in range(n_epochs):
         train_loss = train_epoch(model, optimizer, train_loader, device, epoch, n_epochs, K)
         print(f"Training loss for epoch {epoch} is {train_loss}")
