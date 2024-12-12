@@ -44,7 +44,7 @@ def train(model : nn.Module, optimizer : Optimizer, train_loader : DataLoader, v
     Complete training function with tensorboard logging.
     """
     writer = SummaryWriter(log_dir=log_dir)
-    os.makedirs("checkpoint", exist_ok=True)
+    os.makedirs("checkpoints", exist_ok=True)
     for epoch in range(n_epochs):
         train_loss = train_epoch(model, optimizer, train_loader, device, epoch, n_epochs, K)
         print(f"Training loss for epoch {epoch} is {train_loss}")
