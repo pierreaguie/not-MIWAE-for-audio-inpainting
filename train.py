@@ -18,6 +18,7 @@ def parse_arguments():
     parser.add_argument("--tensorboard",type=str,default="./tensorboard",help="Log directory for tensorboard.")
     parser.add_argument("--K",type=int,default=5,help="Parameter for the importance sampling.")
     parser.add_argument("--val",type=int,default=50,help="Interval between epoch validation.")
+    parser.add_argument("--lr",type=float,default=0.001,help="Learning rate.")
     args = parser.parse_args()
     return args
 
@@ -30,13 +31,9 @@ if __name__ == "__main__":
     x_val = torch.load("data/musicnet/x_val.pt")
     s_val = torch.load("data/musicnet/s_val.pt")
     args = parse_arguments()
+
     train_dataset = ClippedDataset(x_train.to(device),s_train.to(device))
     val_dataset = ClippedDataset(x_val.to(device),s_val.to(device))
-    
-    
-
-
-
 
     train_loader = DataLoader(train_dataset,args.batch_size)
     val_loader = DataLoader(val_dataset,args.batch_size)
@@ -48,6 +45,6 @@ if __name__ == "__main__":
     model = notMIWAE(encoder, decoder, missing_model,args.T,args.latent,device)
     model.to(device)
     
-    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=0.001)
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr = args.lr)
 
     train(model,optimizer,train_loader,val_loader,device,args.nepochs,args.K,args.val,args.tensorboard)

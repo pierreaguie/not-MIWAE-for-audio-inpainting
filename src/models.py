@@ -16,8 +16,7 @@ class AudioEncoder(nn.Module):
         self.T = T
         self.latent_dim = latent_dim
 
-        self.conv1 = nn.Conv1d(1, 64, 4,stride =2, padding = 1)
-        
+        self.conv1 = nn.Conv1d(1, 64, 4,stride = 2, padding = 1)
         self.conv2 = nn.Conv1d(64, 128, 4, stride = 2,padding = 1)
         self.conv3 = nn.Conv1d(128, 256, 4, stride = 2, padding = 1)
         
@@ -27,16 +26,13 @@ class AudioEncoder(nn.Module):
     def forward(self, x : torch.Tensor) -> torch.Tensor:
         x = x.unsqueeze(1)
         x = F.relu(self.conv1(x))
-        
         x = F.relu(self.conv2(x))
-        
         x = F.relu(self.conv3(x))
-        
+
         x = nn.Flatten()(x)
         x = self.fc1(x)
         x = F.relu(x)
         x = self.fc2(x)
-        
         return x
     
 
@@ -61,13 +57,9 @@ class AudioDecoder(nn.Module):
         
         x = nn.Unflatten(-1,(256,self.T//8))(x)
         
-        
-        
         x = F.relu(self.conv3(x))
         x = F.relu(self.conv2(x))
         x = self.conv1(x)
-        
-        
         return x.squeeze(1)
 
 
@@ -89,16 +81,14 @@ class notMIWAE(nn.Module):
 
         self.T = T
         self.latent_dim = latent_dim
+        self.device = device
 
-        
         self.p_mu = nn.Linear(self.T, self.T)
         self.p_logvar = nn.Linear(self.T, self.T)
 
         # Prior distribution
-        self.p_z = Independent(Normal(torch.zeros(1).to(device), torch.ones(1).to(device)), 1)
+        self.p_z = Independent(Normal(torch.zeros(self.latent_dim).to(device), torch.ones(self.latent_dim).to(device)), 1)
 
-
-        self.device = device
         
     def forward(self, x : torch.Tensor, s : torch.Tensor) -> torch.Tensor:
         """ 
@@ -121,9 +111,8 @@ class notMIWAE(nn.Module):
         h = self.encoder(x_observed)
         mu_z = h[:,:self.latent_dim]
         logvar_z = h[:,self.latent_dim:]
-        
 
-        return mu_z.to(self.device), logvar_z.to(self.device)
+        return mu_z, logvar_z
 
     def loss(self, x : torch.Tensor, s : torch.Tensor, K : int = 1) -> torch.Tensor:
         """
@@ -141,9 +130,7 @@ class notMIWAE(nn.Module):
         """
 
         log_p_x_given_z, log_q_z_given_x, log_p_s_given_x, log_p_z, _ = self.log_probabilities_and_missing_data(x, s, K)
-        
         loss = -torch.mean(torch.logsumexp(log_p_x_given_z + log_p_s_given_x - log_q_z_given_x + log_p_z - np.log(K), dim = 0))
-     
         return loss
 
     
@@ -190,17 +177,12 @@ class notMIWAE(nn.Module):
         x_observed = s * x                                                # Size (bs, T)
 
         # Encoder: q(z|x_observed)
-        
-        
         h = self.encoder(x_observed)
-        
         mu_z = h[:,:self.latent_dim]
         logvar_z = h[:,self.latent_dim:]
         
-        
         # Sampling z from q(z|x_observed) K times
-        q_z_given_x = Independent(Normal(loc = mu_z, scale = torch.exp(0.5 * logvar_z)), 1)
-        
+        q_z_given_x = Independent(Normal(loc = mu_z, scale = torch.exp(0.5 * logvar_z) + .001), 1)     # +.001 to avoid numerical instabilities
         z = q_z_given_x.rsample([K]).to(self.device)                                      # Size (K, bs, latent_dim)
         
         # Decoder: p(x|z_k) for all k = 1, ..., K
@@ -208,33 +190,27 @@ class notMIWAE(nn.Module):
         for i in range(K):
             h[i] = self.decoder(z[i])
         
-        
         #h = h.view(K,-1,self.T)
         mu_x = self.p_mu(h)
         logvar_x = self.p_logvar(h)
-        p_x_given_z = Independent(Normal(mu_x, torch.exp(0.5 * logvar_x)),1)
+        p_x_given_z = Independent(Normal(mu_x, torch.exp(0.5 * logvar_x) + .001),1)
 
         # Sample missing data
         x_missing = p_x_given_z.rsample() * (1 - s)
         x_imputed = x_observed + x_missing
         
         # Missing model: p(s|x_observed, x_missing)
-        p_s_given_x = Independent(Bernoulli(self.missing_model(x_imputed)),1)
+        p_s_given_x = Independent(Bernoulli(logits = self.missing_model(x_imputed)),1)
 
         # Log probabilities:
         x_observed_k = torch.Tensor.repeat(x_observed, [K,1,1])            # Size (K, bs, T)
         s_k = torch.Tensor.repeat(s, [K,1,1])                              
-        
         log_p_x_given_z = p_x_given_z.log_prob(x_observed_k)               # Size (K, bs)
-        
         log_q_z_given_x = q_z_given_x.log_prob(z)
-        
         log_p_s_given_x = p_s_given_x.log_prob(s_k)
-        
         log_p_z = self.p_z.log_prob(z)
-        
-        
-        return log_p_x_given_z.to(self.device), log_q_z_given_x.to(self.device), log_p_s_given_x.to(self.device), log_p_z.to(self.device), x_missing.to(self.device)
+
+        return log_p_x_given_z, log_q_z_given_x, log_p_s_given_x, log_p_z, x_missing
 
 
 
@@ -242,14 +218,16 @@ class LogisticMissingModel(nn.Module):
 
     def __init__(self, fixed_params : bool = False, W : float = 50., b : float = 0.8):
         """ 
-        Missing model of the form p(s_j = 1|x_j^m) = sigmoid(-W * (abs(x_j^m) - b))      (i.e. the probability of x_j missing is very high if |x_j| > b) 
+        Missing model of the form p(s_j = 1|x_j^m) = sigmoid(-W * (abs(x_j^m) - b))      (i.e. the probability of x_j observed is low if |x_j| > b) 
         """
         super().__init__()
 
         self.W = nn.Parameter(torch.tensor(W), requires_grad = not fixed_params)
         self.b = nn.Parameter(torch.tensor(b), requires_grad = not fixed_params)
-        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x : torch.Tensor) -> torch.Tensor:
-        return self.sigmoid(self.W * (torch.abs(x) - self.b))
+        """ 
+        Returns the logits of the Bernoulli distribution
+        """
+        return - self.W * (torch.abs(x) - self.b)
     

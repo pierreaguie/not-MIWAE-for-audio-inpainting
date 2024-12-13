@@ -15,6 +15,7 @@ class ClippedDataset(Dataset):
     ClippedDataset class. A dataset of clipped signals.
 
     Args:
+    --------
     x (torch.Tensor): the input, true signals
     s (torch.Tensor): the clipping masks (s = 1 if the signal is clipped, s = 0 otherwise)
 

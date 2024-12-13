@@ -25,17 +25,18 @@ def train_epoch(model : nn.Module, optimizer : Optimizer, train_loader : DataLoa
         
     return mean_loss / len(train_loader)
 
+
 def val_loss_and_MSE(model, val_loader, device, K):
     model.eval()
     mean_loss = 0
-    MSE = 0
+    RMSE = 0
     for x, s in val_loader:
         x, s = x.to(device), s.to(device)
         loss = model.loss(x, s, K)
         mean_loss += loss.item()
         x_imputed = model.impute(x, s, K)
-        MSE += nn.MSELoss()(x_imputed, x)
-    return mean_loss / len(val_loader), MSE / len(val_loader) 
+        RMSE += torch.sqrt(nn.MSELoss()(x_imputed, x)).item()
+    return mean_loss / len(val_loader), RMSE / len(val_loader) 
     
 
 def train(model : nn.Module, optimizer : Optimizer, train_loader : DataLoader, val_loader : DataLoader, device : torch.device, n_epochs : int = 500, K : int = 5, n_epochs_val : int = 20, log_dir = "./tensorboard") -> float:
@@ -49,12 +50,12 @@ def train(model : nn.Module, optimizer : Optimizer, train_loader : DataLoader, v
         print(f"Training loss for epoch {epoch} is {train_loss}")
         writer.add_scalar("Loss/Train", train_loss, epoch)
         if epoch % n_epochs_val == 0:
-            val_loss, val_MSE = val_loss_and_MSE(model, val_loader, device, K)
-            print(f"Validation loss / Mean Squared Error for epoch {epoch} is {val_loss}/{val_MSE}")
+            val_loss, val_RMSE = val_loss_and_MSE(model, val_loader, device, K)
+            print(f"Validation loss / Root Mean Squared Error for epoch {epoch} is {val_loss}/{val_RMSE}")
             # Save the checkpoints
             torch.save(model.state_dict(), f'checkpoints/model_{epoch}.pth')
             writer.add_scalar("Loss/Validation", val_loss, epoch)
-            writer.add_scalar("MSE/Validation", val_MSE, epoch)
+            writer.add_scalar("RMSE/Validation", val_RMSE, epoch)
     
     writer.close()
     
