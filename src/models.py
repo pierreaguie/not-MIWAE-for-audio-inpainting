@@ -129,8 +129,9 @@ class notMIWAE(nn.Module):
         - loss: Tensor of shape (1) with the not-MIWAE loss
         """
 
-        log_p_x_given_z, log_q_z_given_x, log_p_s_given_x, log_p_z, _ = self.log_probabilities_and_missing_data(x, s, K)
-        loss = -torch.mean(torch.logsumexp(log_p_x_given_z + log_p_s_given_x - log_q_z_given_x + log_p_z - np.log(K), dim = 0))
+        log_p_x_given_z, log_q_z_given_x, log_p_s_given_x, log_p_z, x_missing = self.log_probabilities_and_missing_data(x, s, K)
+        x_imputed = x_missing + s * x
+        loss = -torch.mean(torch.logsumexp(log_p_x_given_z + log_p_s_given_x - log_q_z_given_x + log_p_z - np.log(K), dim = 0)) #+ .1 * torch.norm(x_imputed[:,1:] - x_imputed[:,:-1], p = "fro").pow(2)
         return loss
 
     
@@ -218,7 +219,24 @@ class LogisticMissingModel(nn.Module):
 
     def __init__(self, fixed_params : bool = False, W : float = 50., b : float = 0.8):
         """ 
-        Missing model of the form p(s_j = 1|x_j^m) = sigmoid(-W * (abs(x_j^m) - b))      (i.e. the probability of x_j observed is low if |x_j| > b) 
+        Missing model of the form p(s_j = 1|x_j^m) = sigmoid(-W * (x_j^m - b))      (i.e. the probability of x_j observed is low if x_j > b) 
+        """
+        super().__init__()
+
+        self.W = nn.Parameter(torch.tensor(W), requires_grad = not fixed_params)
+        self.b = nn.Parameter(torch.tensor(b), requires_grad = not fixed_params)
+
+    def forward(self, x : torch.Tensor) -> torch.Tensor:
+        """ 
+        Returns the logits of the Bernoulli distribution
+        """
+        return - self.W * (x - self.b)
+    
+class AbsoluteLogisticMissingModel(nn.Module):
+
+    def __init__(self, fixed_params : bool = False, W : float = 50., b : float = 0.8):
+        """ 
+        Missing model of the form p(s_j = 1|x_j^m) = sigmoid(-W * (|x_j^m| - b))      (i.e. the probability of x_j observed is low if |x_j| > b) 
         """
         super().__init__()
 
@@ -230,4 +248,3 @@ class LogisticMissingModel(nn.Module):
         Returns the logits of the Bernoulli distribution
         """
         return - self.W * (torch.abs(x) - self.b)
-    

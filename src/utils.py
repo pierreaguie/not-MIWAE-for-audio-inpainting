@@ -25,6 +25,29 @@ def soft_clipping(x : torch.Tensor, W : float, b : float) -> torch.Tensor:
     return s
 
 
+
+def oneway_soft_clipping(x : torch.Tensor, W : float, b : float) -> torch.Tensor:
+    """ 
+    Returns the missing mask for the input tensor using a soft clipping model:
+        P(s = 1 | x) = sigmoid(-W * (x - b))
+
+    Inputs:
+    ----------------
+    - x (torch.Tensor): input tensor
+    - W (float): multiplicative parameter of the soft clipping model
+    - b (float): threshold
+
+    Outputs:
+    ----------------
+    - s (torch.Tensor): missing mask
+    """
+    
+    logits = -W * (x - b)
+    p = torch.nn.functional.sigmoid(logits)
+    s = torch.bernoulli(p)
+    return s
+
+
 def hard_clipping(x : torch.Tensor, threshold : float) -> torch.Tensor:
     """ 
     Returns the missing mask for the input tensor using a hard clipping model:
