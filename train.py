@@ -26,10 +26,10 @@ def parse_arguments():
 
 
 if __name__ == "__main__":
-    x_train = torch.load("data/musicnet_renorm_reclip/x_train.pt")
-    s_train = torch.load("data/musicnet_renorm_reclip/s_train.pt")
-    x_val = torch.load("data/musicnet_renorm_reclip/x_val.pt")
-    s_val = torch.load("data/musicnet_renorm_reclip/s_val.pt")
+    x_train = torch.load("data/musicnet_renorm_reclip/x_train.pt", weights_only=True)
+    s_train = torch.load("data/musicnet_renorm_reclip/s_train.pt", weights_only=True)
+    x_val = torch.load("data/musicnet_renorm_reclip/x_val.pt", weights_only=True)
+    s_val = torch.load("data/musicnet_renorm_reclip/s_val.pt", weights_only=True)
     args = parse_arguments()
 
     train_dataset = ClippedDataset(x_train.to(device),s_train.to(device))
@@ -40,10 +40,8 @@ if __name__ == "__main__":
 
     encoder = AudioEncoder(args.T,args.latent).to(device)  
     decoder = AudioDecoder(args.T,args.latent,args.K).to(device)
-    encoder.to(device)
-    missing_model = LogisticMissingModel(fixed_params=True).to(device)
-    model = notMIWAE(encoder, decoder, missing_model,args.T,args.latent,device)
-    model.to(device)
+    missing_model = LogisticMissingModel(fixed_params=True, W = 50, b = .5).to(device)
+    model = notMIWAE(encoder, decoder, missing_model,args.T,args.latent,device).to(device)
     
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr = args.lr)
 
