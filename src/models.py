@@ -208,7 +208,7 @@ class notMIWAE(nn.Module):
         for i in range(K):
             h[i] = self.decoder(z[i])
         
-        print(h.shape)
+        
         #h = h.view(K,-1,self.T)
         mu_x = self.p_mu(h)
         logvar_x = self.p_logvar(h)
@@ -226,13 +226,13 @@ class notMIWAE(nn.Module):
         s_k = torch.Tensor.repeat(s, [K,1,1])                              
         
         log_p_x_given_z = p_x_given_z.log_prob(x_observed_k)               # Size (K, bs)
-        print(log_p_x_given_z.shape)
+        
         log_q_z_given_x = q_z_given_x.log_prob(z)
-        print(log_q_z_given_x.shape)
+        
         log_p_s_given_x = p_s_given_x.log_prob(s_k)
-        print(log_p_s_given_x.shape)
+        
         log_p_z = self.p_z.log_prob(z)
-        print(log_p_z.shape)
+        
         
         return log_p_x_given_z.to(self.device), log_q_z_given_x.to(self.device), log_p_s_given_x.to(self.device), log_p_z.to(self.device), x_missing.to(self.device)
 
