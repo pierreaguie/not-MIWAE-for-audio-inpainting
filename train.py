@@ -26,10 +26,10 @@ def parse_arguments():
 
 
 if __name__ == "__main__":
-    x_train = torch.load("data/musicnet/x_train.pt")
-    s_train = torch.load("data/musicnet/s_train.pt")
-    x_val = torch.load("data/musicnet/x_val.pt")
-    s_val = torch.load("data/musicnet/s_val.pt")
+    x_train = torch.load("data/musicnet_renorm_reclip/x_train.pt")
+    s_train = torch.load("data/musicnet_renorm_reclip/s_train.pt")
+    x_val = torch.load("data/musicnet_renorm_reclip/x_val.pt")
+    s_val = torch.load("data/musicnet_renorm_reclip/s_val.pt")
     args = parse_arguments()
 
     train_dataset = ClippedDataset(x_train.to(device),s_train.to(device))

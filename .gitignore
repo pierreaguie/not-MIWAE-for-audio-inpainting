@@ -4,3 +4,5 @@ tensorboard
 tensorboard/*
 checkpoints
 checkpoints/*
+data/musicnet_unprocessed
+data/musicnet_unprocessed/*
