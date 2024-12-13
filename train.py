@@ -45,7 +45,7 @@ if __name__ == "__main__":
     decoder = AudioDecoder(args.T,args.latent,args.K).to(device)
     encoder.to(device)
     missing_model = LogisticMissingModel(fixed_params=True).to(device)
-    model = notMIWAE(encoder, decoder, missing_model,args.T,args.latent,args.T,args.latent,device)
+    model = notMIWAE(encoder, decoder, missing_model,args.T,args.latent,device)
     model.to(device)
     
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=0.001)
