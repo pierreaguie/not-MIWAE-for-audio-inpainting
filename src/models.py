@@ -10,24 +10,33 @@ import numpy as np
 ## Penser à tester au cas ou l'average pooling pour la projection des features dans l'espace latent
 class AudioEncoder(nn.Module):
 
-    def __init__(self, T : int, output_dim : int):
+    def __init__(self, T : int, latent_dim : int):
         super().__init__()
 
         self.T = T
-        self.output_dim = output_dim
+        self.latent_dim = latent_dim
 
-        self.conv1 = nn.Conv1d(1, 16, 3, padding = 1)
-        self.conv2 = nn.Conv1d(16, 32, 3, padding = 1)
-        self.conv3 = nn.Conv1d(32, 64, 3, padding = 1)
-        self.fc = nn.Linear(64 * T, output_dim)
+        self.conv1 = nn.Conv1d(1, 64, 4,stride =2, padding = 1)
+        
+        self.conv2 = nn.Conv1d(64, 128, 4, stride = 2,padding = 1)
+        self.conv3 = nn.Conv1d(128, 256, 4, stride = 2, padding = 1)
+        
+        self.fc1 = nn.Linear(32*self.T,64)
+        self.fc2 = nn.Linear(64,self.latent_dim*2)
 
     def forward(self, x : torch.Tensor) -> torch.Tensor:
         x = x.unsqueeze(1)
         x = F.relu(self.conv1(x))
+        
         x = F.relu(self.conv2(x))
+        
         x = F.relu(self.conv3(x))
-        x = x.view(-1, 64 * self.T)
-        x = self.fc(x)
+        
+        x = nn.Flatten()(x)
+        x = self.fc1(x)
+        x = F.relu(x)
+        x = self.fc2(x)
+        
         return x
     
 
@@ -39,18 +48,26 @@ class AudioDecoder(nn.Module):
         self.T = T
         self.latent_dim = latent_dim
 
-        self.fc = nn.Linear(latent_dim, 64 * T)
-        self.conv3 = nn.Conv1d(64, 32, 3, padding = 1)
-        self.conv2 = nn.Conv1d(32, 16, 3, padding = 1)
-        self.conv1 = nn.Conv1d(16, 1, 3, padding = 1)
+        self.fc1 = nn.Linear(latent_dim, 64)
+        self.fc2 = nn.Linear(64,32*self.T)
+        self.conv3 = nn.ConvTranspose1d(256, 128, 4,stride=2, padding = 1)
+        self.conv2 = nn.ConvTranspose1d(128, 64, 4,stride=2, padding = 1)
+        self.conv1 = nn.ConvTranspose1d(64, 1, 4,stride=2, padding = 1)
         self.K = K
 
     def forward(self, z : torch.Tensor) -> torch.Tensor:
-        x = self.fc(z)
-        x = x.view(-1, 64, self.T)
+        x = self.fc1(z)
+        x = self.fc2(x)
+        
+        x = nn.Unflatten(-1,(256,self.T//8))(x)
+        
+        
+        
         x = F.relu(self.conv3(x))
         x = F.relu(self.conv2(x))
         x = self.conv1(x)
+        
+        
         return x.squeeze(1)
 
 
@@ -62,8 +79,6 @@ class notMIWAE(nn.Module):
                  decoder : nn.Module, 
                  missing_model : nn.Module,
                  T : int,
-                 encoder_output_dim : int,
-                 decoder_output_dim : int,
                  latent_dim : int,
                  device : torch.device):
         super().__init__()
@@ -73,14 +88,11 @@ class notMIWAE(nn.Module):
         self.missing_model = missing_model
 
         self.T = T
-        self.encoder_output_dim = encoder_output_dim
-        self.decoder_output_dim = decoder_output_dim
         self.latent_dim = latent_dim
 
-        self.q_mu = nn.Linear(self.encoder_output_dim, latent_dim)
-        self.q_logvar = nn.Linear(self.encoder_output_dim, latent_dim)
-        self.p_mu = nn.Linear(self.decoder_output_dim, self.T)
-        self.p_logvar = nn.Linear(self.decoder_output_dim, self.T)
+        
+        self.p_mu = nn.Linear(self.T, self.T)
+        self.p_logvar = nn.Linear(self.T, self.T)
 
         # Prior distribution
         self.p_z = Independent(Normal(torch.zeros(1).to(device), torch.ones(1).to(device)), 1)
@@ -107,8 +119,9 @@ class notMIWAE(nn.Module):
 
         # Encoder: q(z|x_observed)
         h = self.encoder(x_observed)
-        mu_z = self.q_mu(h)
-        logvar_z = self.q_logvar(h)
+        mu_z = h[:,:self.latent_dim]
+        logvar_z = h[:,self.latent_dim:]
+        
 
         return mu_z.to(self.device), logvar_z.to(self.device)
 
@@ -177,21 +190,26 @@ class notMIWAE(nn.Module):
         x_observed = s * x                                                # Size (bs, T)
 
         # Encoder: q(z|x_observed)
-        print(f"x_observed {x_observed[0]}")
+        
         
         h = self.encoder(x_observed)
-        print(f"h {h[0]}")
-        mu_z = self.q_mu(h)
-        logvar_z = self.q_logvar(h)
+        
+        mu_z = h[:,:self.latent_dim]
+        logvar_z = h[:,self.latent_dim:]
+        
         
         # Sampling z from q(z|x_observed) K times
         q_z_given_x = Independent(Normal(loc = mu_z, scale = torch.exp(0.5 * logvar_z)), 1)
+        
         z = q_z_given_x.rsample([K]).to(self.device)                                      # Size (K, bs, latent_dim)
         
         # Decoder: p(x|z_k) for all k = 1, ..., K
+        h = torch.zeros((K,x.shape[0],self.T),device=self.device)
+        for i in range(K):
+            h[i] = self.decoder(z[i])
         
-        h = self.decoder(z)
-        h = h.view(K,-1,self.decoder_output_dim)
+        print(h.shape)
+        #h = h.view(K,-1,self.T)
         mu_x = self.p_mu(h)
         logvar_x = self.p_logvar(h)
         p_x_given_z = Independent(Normal(mu_x, torch.exp(0.5 * logvar_x)),1)
@@ -199,7 +217,7 @@ class notMIWAE(nn.Module):
         # Sample missing data
         x_missing = p_x_given_z.rsample() * (1 - s)
         x_imputed = x_observed + x_missing
-
+        
         # Missing model: p(s|x_observed, x_missing)
         p_s_given_x = Independent(Bernoulli(self.missing_model(x_imputed)),1)
 
@@ -208,9 +226,13 @@ class notMIWAE(nn.Module):
         s_k = torch.Tensor.repeat(s, [K,1,1])                              
         
         log_p_x_given_z = p_x_given_z.log_prob(x_observed_k)               # Size (K, bs)
+        print(log_p_x_given_z.shape)
         log_q_z_given_x = q_z_given_x.log_prob(z)
+        print(log_q_z_given_x.shape)
         log_p_s_given_x = p_s_given_x.log_prob(s_k)
+        print(log_p_s_given_x.shape)
         log_p_z = self.p_z.log_prob(z)
+        print(log_p_z.shape)
         
         return log_p_x_given_z.to(self.device), log_q_z_given_x.to(self.device), log_p_s_given_x.to(self.device), log_p_z.to(self.device), x_missing.to(self.device)
 
