@@ -10,29 +10,40 @@ import numpy as np
 ## Penser à tester au cas ou l'average pooling pour la projection des features dans l'espace latent
 class AudioEncoder(nn.Module):
 
-    def __init__(self, T : int, latent_dim : int):
+    def __init__(self, T : int, latent_dim : int, dropout : float = .5):
         super().__init__()
 
         self.T = T
         self.latent_dim = latent_dim
 
-        self.conv1 = nn.Conv1d(1, 64, 4,stride = 2, padding = 1)
-        self.conv2 = nn.Conv1d(64, 128, 4, stride = 2,padding = 1)
-        self.conv3 = nn.Conv1d(128, 256, 4, stride = 2, padding = 1)
+        self.conv1 = nn.Conv1d(1, 64, 7,stride = 1, padding = 3)
+        self.conv2 = nn.Conv1d(64, 128, 5, stride = 1,padding = 2)
+        self.conv3 = nn.Conv1d(128, 256, 3, stride = 1, padding = 1)
+
+        self.bn1 = nn.BatchNorm1d(64)
+        self.bn2 = nn.BatchNorm1d(128)
+        self.bn3 = nn.BatchNorm1d(256)
+
+        self.pool = nn.MaxPool1d(kernel_size = 2)
+        self.avgpool = nn.AdaptiveAvgPool1d(1)
         
-        self.fc1 = nn.Linear(32*self.T,64)
+        self.fc1 = nn.Linear(256,64)
         self.fc2 = nn.Linear(64,self.latent_dim*2)
+
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x : torch.Tensor) -> torch.Tensor:
         x = x.unsqueeze(1)
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-        x = F.relu(self.conv3(x))
 
-        x = nn.Flatten()(x)
-        x = self.fc1(x)
-        x = F.relu(x)
-        x = self.fc2(x)
+        x = self.pool(F.relu(self.bn1(self.conv1(x))))
+        x = self.pool(F.relu(self.bn2(self.conv2(x))))
+        x = self.pool(F.relu(self.bn3(self.conv3(x))))
+
+        x = self.avgpool(x).squeeze(-1)
+
+        x = F.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = F.relu(self.fc2(x))
         return x
     
 
@@ -44,23 +55,30 @@ class AudioDecoder(nn.Module):
         self.T = T
         self.latent_dim = latent_dim
 
-        self.fc1 = nn.Linear(latent_dim, 64)
-        self.fc2 = nn.Linear(64,32*self.T)
-        self.conv3 = nn.ConvTranspose1d(256, 128, 4,stride=2, padding = 1)
-        self.conv2 = nn.ConvTranspose1d(128, 64, 4,stride=2, padding = 1)
-        self.conv1 = nn.ConvTranspose1d(64, 1, 4,stride=2, padding = 1)
+        self.fc1 = nn.Linear(latent_dim, 256)
+        self.fc2 = nn.Linear(256,256*(T//8))
+
+        self.deconv1 = nn.ConvTranspose1d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1)
+        self.deconv2 = nn.ConvTranspose1d(128, 64, kernel_size=5, stride=2, padding=2, output_padding=1)
+        self.deconv_mu = nn.ConvTranspose1d(64, 1, kernel_size=7, stride=2, padding=3, output_padding=1)
+        self.deconv_logvar = nn.ConvTranspose1d(64, 1, kernel_size=7, stride=2, padding=3, output_padding=1)
+
+        self.bn1 = nn.BatchNorm1d(128)
+        self.bn2 = nn.BatchNorm1d(64)
+
         self.K = K
 
     def forward(self, z : torch.Tensor) -> torch.Tensor:
-        x = self.fc1(z)
-        x = self.fc2(x)
-        
-        x = nn.Unflatten(-1,(256,self.T//8))(x)
-        
-        x = F.relu(self.conv3(x))
-        x = F.relu(self.conv2(x))
-        x = self.conv1(x)
-        return x.squeeze(1)
+        x = F.relu(self.fc1(z))
+        x = F.relu(self.fc2(x))
+        x = x.view(x.size(0), 256, self.T//8)
+                
+        x = F.relu(self.bn1(self.deconv1(x)))
+        x = F.relu(self.bn2(self.deconv2(x)))
+
+        mu = torch.tanh(self.deconv_mu(x)).squeeze(1)
+        logvar = self.deconv_logvar(x).squeeze(1)
+        return mu, logvar
 
 
 
@@ -82,9 +100,6 @@ class notMIWAE(nn.Module):
         self.T = T
         self.latent_dim = latent_dim
         self.device = device
-
-        self.p_mu = nn.Linear(self.T, self.T)
-        self.p_logvar = nn.Linear(self.T, self.T)
 
         # Prior distribution
         self.p_z = Independent(Normal(torch.zeros(self.latent_dim).to(device), torch.ones(self.latent_dim).to(device)), 1)
@@ -187,13 +202,10 @@ class notMIWAE(nn.Module):
         z = q_z_given_x.rsample([K]).to(self.device)                                      # Size (K, bs, latent_dim)
         
         # Decoder: p(x|z_k) for all k = 1, ..., K
-        h = torch.zeros((K,x.shape[0],self.T),device=self.device)
+        mu_x = torch.zeros((K,x.shape[0],self.T),device=self.device)
+        logvar_x = torch.zeros((K,x.shape[0],self.T),device=self.device)
         for i in range(K):
-            h[i] = self.decoder(z[i])
-        
-        #h = h.view(K,-1,self.T)
-        mu_x = self.p_mu(h)
-        logvar_x = self.p_logvar(h)
+            mu_x[i], logvar_x[i] = self.decoder(z[i])
         p_x_given_z = Independent(Normal(mu_x, torch.exp(0.5 * logvar_x) + .001),1)
 
         # Sample missing data

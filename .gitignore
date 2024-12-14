@@ -6,3 +6,5 @@ checkpoints
 checkpoints/*
 data/musicnet_unprocessed
 data/musicnet_unprocessed/*
+data/big_dataset
+data/big_dataset/*
