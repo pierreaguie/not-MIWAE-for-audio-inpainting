@@ -35,7 +35,8 @@ def val_loss_and_MSE(model, val_loader, device, K):
         loss = model.loss(x, s, K)
         mean_loss += loss.item()
         x_imputed = model.impute(x, s, K)
-        RMSE += torch.sqrt(nn.MSELoss()(x_imputed, x)).item()
+        MSE = torch.sum((x - x_imputed)**2, dim=1) / torch.sum(1 - s, dim=1)
+        RMSE += torch.sqrt(MSE.mean()).item()
     return mean_loss / len(val_loader), RMSE / len(val_loader) 
     
 

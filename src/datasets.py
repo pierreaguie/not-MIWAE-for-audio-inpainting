@@ -9,6 +9,8 @@ import random
 from src.utils import soft_clipping, hard_clipping, normalize
 import time
 
+from torchvision import datasets, transforms
+
 
 class ClippedDataset(Dataset):
     """ 
@@ -51,7 +53,7 @@ def collate(batch):
 
 
 
-def generate_synthetic_dataset(N, T, K, clipping_model : str = "soft", W : float = 50, thresh : float = .8):
+def generate_synthetic_dataset(N, T, K, clipping_model : str = "soft", W : float = 50, thresh : float = .8, sr : float = 16000, max_freq : int = 2000):
     """ 
     Generates a synthetic dataset of N samples of length T. Each sample is a mixture of K sinusoids, clipped using the chosen clipping model.
     """
@@ -59,16 +61,15 @@ def generate_synthetic_dataset(N, T, K, clipping_model : str = "soft", W : float
     s = torch.zeros(N, T)
     for i in range(N):
         for k in range(K):
-            A = torch.rand(1) * 2 - 1
-            f = torch.randint(1, T // 2, (1,))
+            A = torch.randn(1)
+            f = np.random.randint(1, max_freq)
             phi = torch.rand(1) * 2 * np.pi
-            x[i] += A * torch.sin(2 * np.pi * f * torch.arange(T).float() / T + phi)
+            x[i] += A * torch.sin(2 * np.pi * f * torch.arange(T) / sr + phi)
         x[i] = normalize(x[i])
         if clipping_model == "soft":
             s[i] = soft_clipping(x[i], W, thresh)
         elif clipping_model == "hard":
             s[i] = hard_clipping(x[i], thresh)
-        x[i] = (1-s[i]) * x[i]
 
     return ClippedDataset(x, s)    
 
