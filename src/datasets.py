@@ -93,7 +93,6 @@ def load_dataset(dataset_dir : str, n_samples : int, window_size : int, target_s
             resampler = Resample(orig_freq=sample_rate, new_freq=target_sample_rate)
             waveform = resampler(waveform)
             sample_rate = target_sample_rate
-        waveform = torch.nn.functional.normalize(waveform,p=float("inf"),dim=1)
         
         # Take 10 parts of the audio
         num_samples = waveform.size(1)
@@ -101,7 +100,7 @@ def load_dataset(dataset_dir : str, n_samples : int, window_size : int, target_s
         
         
         for j in range(10):
-            x[i*10+j,:] = waveform[:,start_points[j]:start_points[j]+window_size]
+            x[i*10+j,:] = torch.nn.functional.normalize(waveform[:,start_points[j]:start_points[j]+window_size], p=float("inf"),dim=1)
         
         
             if clipping_model == "soft":
