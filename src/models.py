@@ -134,9 +134,8 @@ class notMIWAE(nn.Module):
         - loss: Tensor of shape (1) with the not-MIWAE loss
         """
 
-        log_p_x_given_z, log_q_z_given_x, log_p_s_given_x, log_p_z, x_missing, _ = self.log_probabilities_and_missing_data(x, s, K)
-        x_imputed = x_missing + s * x
-        loss = -torch.mean(torch.logsumexp(log_p_x_given_z + log_p_s_given_x - log_q_z_given_x + log_p_z - np.log(K), dim = 0)) # + 1. * torch.norm(x_imputed[:,1:] - x_imputed[:,:-1], p = "fro").pow(2)
+        log_p_x_given_z, log_q_z_given_x, log_p_s_given_x, log_p_z, _, _ = self.log_probabilities_and_missing_data(x, s, K)
+        loss = -torch.mean(torch.logsumexp(log_p_x_given_z + log_p_s_given_x - log_q_z_given_x + log_p_z - np.log(K), dim = 0))
         return loss
 
     
@@ -156,7 +155,7 @@ class notMIWAE(nn.Module):
         """
 
         x_observed = s * x
-        log_p_x_given_z, log_q_z_given_x, log_p_s_given_x, log_p_z, x_missing, mu_x = self.log_probabilities_and_missing_data(x, s, K)
+        log_p_x_given_z, log_q_z_given_x, log_p_s_given_x, log_p_z, _, mu_x = self.log_probabilities_and_missing_data(x, s, K)
         imp_weights = F.softmax(log_p_x_given_z + log_p_s_given_x - log_q_z_given_x + log_p_z, dim = 0)
 
         return torch.einsum('ki,kij->ij', imp_weights, mu_x*(1-s)) + x_observed
@@ -176,7 +175,8 @@ class notMIWAE(nn.Module):
         - log_q_z_given_x: Tensor of shape (K, batch_size) with the log probabilities of the posterior
         - log_p_s_given_x: Tensor of shape (K, batch_size) with the log probabilties of the missing model
         - log_p_z: Tensor of shape (K, batch_size) with the log probabilities of the prior
-        - x_missing: Tensor of shape (K, batch_size, T) with the missing data and 0s where x is observed        
+        - x_missing: Tensor of shape (K, batch_size, T) with the missing data and 0s where x is observed    
+        - mu_x: Tensor of shape (K, batch_size, T) with the mean of the decoder distribution    
         """
         
         # s[i,j] = 1 iff x[i,j] is observed. If x[i,j] is missing, pad with 0.
@@ -235,7 +235,7 @@ class LogisticMissingModel(nn.Module):
         return torch.clamp(- self.W * (x - self.b), min = -5, max = 5)
     
 
-    
+
 class AbsoluteLogisticMissingModel(nn.Module):
 
     def __init__(self, fixed_params : bool = False, W : float = 50., b : float = 0.8):
