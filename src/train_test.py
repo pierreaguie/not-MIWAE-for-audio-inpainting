@@ -5,7 +5,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.optim import Optimizer, Adam
 from tqdm import tqdm
 import os
-
+import math
 
 def train_epoch(model : nn.Module, optimizer : Optimizer, train_loader : DataLoader, device : torch.device, epoch : int, n_epochs : int,K : int = 5,) -> float:
     """ 
@@ -59,6 +59,31 @@ def train(model : nn.Module, optimizer : Optimizer, train_loader : DataLoader, v
             writer.add_scalar("RMSE/Validation", val_RMSE, epoch)
     
     writer.close()
+
+def train_and_give_best_RMSE(model : nn.Module, optimizer : Optimizer, train_loader : DataLoader, val_loader : DataLoader, device : torch.device, current_latent_dim : int, n_epochs : int = 500, K : int = 5, n_epochs_val : int = 5, log_dir = "./tensorboard") -> float:
+    """
+    Complete training function with tensorboard logging.
+    """
+    writer = SummaryWriter(log_dir=log_dir)
+    os.makedirs("checkpoints", exist_ok=True)
+    best_val_RMSE = math.inf
+    for epoch in range(n_epochs):
+        train_loss = train_epoch(model, optimizer, train_loader, device, epoch, n_epochs, K)
+        print(f"Training loss for epoch {epoch} is {train_loss}")
+        writer.add_scalar("Loss/Train", train_loss, epoch)
+        if epoch % n_epochs_val == 0:
+            val_loss, val_RMSE = val_loss_and_MSE(model, val_loader, device, K)
+            if val_RMSE <= best_val_RMSE:
+                best_val_RMSE = val_RMSE
+            print(f"Validation loss / Root Mean Squared Error for epoch {epoch} is {val_loss}/{val_RMSE}")
+            # Save the checkpoints
+            torch.save(model.state_dict(), f'checkpoints/model_{current_latent_dim}_{epoch}.pth')
+            writer.add_scalar("Loss/Validation", val_loss, epoch)
+            writer.add_scalar("RMSE/Validation", val_RMSE, epoch)
+    
+    writer.close()
+    return best_val_RMSE
+    
     
             
             
