@@ -48,8 +48,8 @@ if __name__ == "__main__":
     
     x_train = torch.load("data/musicnet_renorm_reclip/x_train.pt")
     s_train = soft_clipping(x_train,10.0,0.6)
-    x_val = torch.load("data/musicnet_renorm_reclip/x_val.pt")
-    s_val = soft_clipping(x_val,10.0,0.6)
+    x_val = torch.load("data/musicnet_renorm_reclip/x_val.pt").to(device)
+    s_val = soft_clipping(x_val,10.0,0.6).to(device)
     args = parse_arguments()
 
     
@@ -75,13 +75,13 @@ if __name__ == "__main__":
     original_s = []
     imputation_results = []
     for imputation in range(nbr_imputations):
-        idx = torch.randint(0,len(x_train),(1,)).to(device)
+        idx = torch.randint(0,len(x_val),(1,)).to(device)
         
-        x= x_train[idx].view(1,1024).to(device)
-        print(x.shape)
+        x= x_val[idx].view(1,1024).to(device)
+        
         original_data.append(x[0,400:600])
-        s = s_train[idx].view(1,1024).to(device)
-        print(s.shape)
+        s = s_val[idx].view(1,1024).to(device)
+        
         original_s.append(s[0,400:600])
         x_imputed = model.impute(x,s,1)
         imputation_results.append(x_imputed[0,400:600])
