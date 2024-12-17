@@ -57,7 +57,7 @@ if __name__ == "__main__":
     
     
     args = parse_arguments()
-    frames, original_norms, original_audio = cut_audio("1819.wav")
+    frames, original_norms, original_audio = cut_audio("assets/audio/1819.wav")
     
     
     
