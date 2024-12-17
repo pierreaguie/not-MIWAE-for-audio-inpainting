@@ -60,6 +60,7 @@ def train(model : nn.Module, optimizer : Optimizer, train_loader : DataLoader, v
     
     writer.close()
 
+
 def train_and_give_best_RMSE(model : nn.Module, optimizer : Optimizer, train_loader : DataLoader, val_loader : DataLoader, device : torch.device, current_latent_dim : int, n_epochs : int = 500, K : int = 5, n_epochs_val : int = 5, log_dir = "./tensorboard") -> float:
     """
     Complete training function with tensorboard logging.

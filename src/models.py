@@ -6,37 +6,7 @@ from torch.distributions import Normal, Bernoulli, Independent
 import numpy as np
 
 
-## Change les deux suivant à ta guise Tous
-## Penser à tester au cas ou l'average pooling pour la projection des features dans l'espace latent
 class AudioEncoder(nn.Module):
-
-    def __init__(self, T : int, latent_dim : int, dropout : float = .3):
-        super().__init__()
-
-        self.T = T
-        self.latent_dim = latent_dim
-
-        self.conv1 = nn.Conv1d(1, 64, 4, stride = 2, padding = 1)
-        self.conv2 = nn.Conv1d(64, 128, 4, stride = 2,padding = 1)
-        self.conv3 = nn.Conv1d(128, 256, 4, stride = 2, padding = 1)
-
-        self.flatten = nn.Flatten()        
-        self.fc_mu = nn.Linear((self.T//8) * 256, self.latent_dim)
-        self.fc_logvar = nn.Linear((self.T//8) * 256, self.latent_dim)
-
-
-    def forward(self, x : torch.Tensor) -> torch.Tensor:
-        x = x.unsqueeze(1)
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-        x = F.relu(self.conv3(x))
-        x = self.flatten(x)
-        mu = self.fc_mu(x)
-        logvar = self.fc_logvar(x)
-        return mu, logvar
-    
-
-class AudioEncoderV2(nn.Module):
 
     def __init__(self, T : int, latent_dim : int, dropout : float = .3):
         super().__init__()
@@ -69,7 +39,7 @@ class AudioEncoderV2(nn.Module):
         return mu, logvar
     
 
-class AudioDecoderV2(nn.Module):
+class AudioDecoder(nn.Module):
 
     def __init__(self, T : int, latent_dim : int, K : int):
         super().__init__()
@@ -102,33 +72,6 @@ class AudioDecoderV2(nn.Module):
         x = self.decoder(x)
         mu = self.decoder_mu(x).squeeze(1)
         logvar = self.decoder_logvar(x).squeeze(1)
-        return mu, logvar
-    
-
-class AudioDecoder(nn.Module):
-
-    def __init__(self, T : int, latent_dim : int, K : int):
-        super().__init__()
-
-        self.T = T
-        self.latent_dim = latent_dim
-
-        self.fc = nn.Linear(latent_dim, (self.T//8) * 256)
-
-        self.deconv1 = nn.ConvTranspose1d(256, 128, kernel_size=4, stride=2, padding=1)
-        self.deconv2 = nn.ConvTranspose1d(128, 64, kernel_size=4, stride=2, padding=1)
-        self.deconv_mu = nn.ConvTranspose1d(64, 1, kernel_size=4, stride=2, padding=1)
-        self.deconv_logvar = nn.ConvTranspose1d(64, 1, kernel_size=4, stride=2, padding=1)
-
-        self.tanh = nn.Tanh()
-
-    def forward(self, z : torch.Tensor) -> torch.Tensor:
-        x = self.fc(z)
-        x = x.view(x.size(0), 256, self.T//8)
-        x = F.relu(self.deconv1(x))
-        x = F.relu(self.deconv2(x))
-        mu = self.tanh(self.deconv_mu(x)).squeeze(1)
-        logvar = self.deconv_logvar(x).squeeze(1)
         return mu, logvar
 
 
@@ -290,6 +233,8 @@ class LogisticMissingModel(nn.Module):
         Returns the logits of the Bernoulli distribution
         """
         return torch.clamp(- self.W * (x - self.b), min = -5, max = 5)
+    
+
     
 class AbsoluteLogisticMissingModel(nn.Module):
 

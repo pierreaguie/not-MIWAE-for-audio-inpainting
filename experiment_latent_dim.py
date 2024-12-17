@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from src.train_test import *
-from src.models import notMIWAE, LogisticMissingModel, AudioDecoder, AudioEncoder, notMIWAE, AudioDecoderV2, AudioEncoderV2, AbsoluteLogisticMissingModel
+from src.models import notMIWAE, LogisticMissingModel, AudioDecoder, AudioEncoder, notMIWAE, AbsoluteLogisticMissingModel
 from torch.utils.data import DataLoader
 from src.datasets import ClippedDataset
 from src.utils import normalize
@@ -58,8 +58,8 @@ if __name__ == "__main__":
     val_loader = DataLoader(val_dataset,args.batch_size)
     list_best_RMSE = []
     for latent_dim in latent_dims_list:
-        encoder = AudioEncoderV2(args.T, latent_dim).to(device)  
-        decoder = AudioDecoderV2(args.T, latent_dim, args.K).to(device)
+        encoder = AudioEncoder(args.T, latent_dim).to(device)  
+        decoder = AudioDecoder(args.T, latent_dim, args.K).to(device)
         missing_model = AbsoluteLogisticMissingModel(fixed_params=True, W = 10., b = .5).to(device)
         model = notMIWAE(encoder, decoder, missing_model, args.T, latent_dim, device).to(device)
     

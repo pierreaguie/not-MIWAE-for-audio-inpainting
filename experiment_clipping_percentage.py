@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from src.train_test import *
-from src.models import notMIWAE, LogisticMissingModel, AudioDecoder, AudioEncoder, notMIWAE, AudioDecoderV2, AudioEncoderV2, AbsoluteLogisticMissingModel
+from src.models import notMIWAE, LogisticMissingModel, AudioDecoder, AudioEncoder, notMIWAE, AbsoluteLogisticMissingModel
 from torch.utils.data import DataLoader
 from src.datasets import ClippedDataset
 from src.utils import normalize
@@ -55,8 +55,8 @@ if __name__ == "__main__":
     
     list_best_RMSE = []
     list_missing_percentage = []
-    encoder = AudioEncoderV2(args.T, args.latent).to(device)  
-    decoder = AudioDecoderV2(args.T, args.latent, args.K).to(device)
+    encoder = AudioEncoder(args.T, args.latent).to(device)  
+    decoder = AudioDecoder(args.T, args.latent, args.K).to(device)
     for clipping in clipping_percentage:
         s_train = soft_clipping(x_train,10.0,clipping)
         s_val = soft_clipping(x_val,10.0,clipping)

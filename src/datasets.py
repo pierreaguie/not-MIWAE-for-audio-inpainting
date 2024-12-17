@@ -85,18 +85,17 @@ def load_dataset(dataset_dir : str, n_samples : int, window_size : int, target_s
         file_path = os.path.join(dataset_dir, file)
         
         start_frame = random.randint(660000,1320000)
+        # Take ten seconds of audio
         waveform, sample_rate = torchaudio.load(file_path,frame_offset=start_frame,num_frames=440000)
-        # We take ten seconds of audio
         
+        # Resample and normalize 
         if sample_rate != target_sample_rate:
             resampler = Resample(orig_freq=sample_rate, new_freq=target_sample_rate)
             waveform = resampler(waveform)
             sample_rate = target_sample_rate
         waveform = torch.nn.functional.normalize(waveform,p=float("inf"),dim=1)
         
-        # We resample it and we normalize it 
-        
-        # Then we take 10 part of this audio
+        # Take 10 parts of the audio
         num_samples = waveform.size(1)
         start_points = random.sample(range(0, num_samples - window_size),10)
         

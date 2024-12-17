@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from src.train_test import *
-from src.models import notMIWAE, LogisticMissingModel, AudioDecoder, AudioEncoder, notMIWAE, AudioDecoderV2, AudioEncoderV2, AbsoluteLogisticMissingModel
+from src.models import notMIWAE, LogisticMissingModel, AudioDecoder, AudioEncoder, notMIWAE, AbsoluteLogisticMissingModel
 from torch.utils.data import DataLoader
 from src.datasets import ClippedDataset
 from src.utils import normalize
@@ -55,8 +55,8 @@ if __name__ == "__main__":
     
     
     
-    encoder = AudioEncoderV2(args.T, args.latent).to(device)  
-    decoder = AudioDecoderV2(args.T, args.latent, args.K).to(device)
+    encoder = AudioEncoder(args.T, args.latent).to(device)  
+    decoder = AudioDecoder(args.T, args.latent, args.K).to(device)
     missing_model = AbsoluteLogisticMissingModel(fixed_params=True, W = 10., b = 0.6).to(device)
     model = notMIWAE(encoder, decoder, missing_model, args.T, args.latent, device).to(device)    
     train_dataset = ClippedDataset(x_train.to(device),s_train.to(device))
