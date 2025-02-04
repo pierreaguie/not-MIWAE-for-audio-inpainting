@@ -31,20 +31,7 @@ def parse_arguments():
 if __name__ == "__main__":
     
     nbr_imputations = 4
-    """
-    
-    
-    x_train = torch.load("data/musicnet_renorm_reclip/x_train.pt")
-    x_val = torch.load("data/musicnet_renorm_reclip/x_val.pt")
-    
-    s_train = soft_clipping(x_train,10.0,0.5)
-    s_val = soft_clipping(x_val,10.0,.5)
-    
-    torch.save(s_train,"data/musicnet_renorm_reclip/s_train.pt")
-    torch.save(s_train,"data/musicnet_renorm_reclip/s_val.pt")
-    print("saved")
-    """
-    
+
     
     x_train = torch.load("data/musicnet_renorm_reclip/x_train.pt")
     s_train = soft_clipping(x_train,10.0,0.6)
@@ -52,9 +39,6 @@ if __name__ == "__main__":
     s_val = soft_clipping(x_val,10.0,0.6).to(device)
     args = parse_arguments()
 
-    
-    
-    
     encoder = AudioEncoder(args.T, args.latent).to(device)  
     decoder = AudioDecoder(args.T, args.latent, args.K).to(device)
     missing_model = AbsoluteLogisticMissingModel(fixed_params=True, W = 10., b = 0.6).to(device)
@@ -70,7 +54,6 @@ if __name__ == "__main__":
     torch.autograd.set_detect_anomaly(True)
     state_dict = torch.load("checkpoints/model_995.pth")
     model.load_state_dict(state_dict)
-    #train(model, optimizer, train_loader, val_loader, device, args.nepochs, args.K, args.val, args.tensorboard + "/" + args.run)
     original_data = []
     original_s = []
     imputation_results = []

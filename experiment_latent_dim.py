@@ -30,20 +30,6 @@ def parse_arguments():
 if __name__ == "__main__":
     
     latent_dims_list = [10, 20, 30, 40, 50, 100, 125, 150, 175, 200]
-    """
-    from src.utils import soft_clipping
-    
-    x_train = torch.load("data/musicnet_renorm_reclip/x_train.pt")
-    x_val = torch.load("data/musicnet_renorm_reclip/x_val.pt")
-    
-    s_train = soft_clipping(x_train,10.0,0.5)
-    s_val = soft_clipping(x_val,10.0,.5)
-    
-    torch.save(s_train,"data/musicnet_renorm_reclip/s_train.pt")
-    torch.save(s_train,"data/musicnet_renorm_reclip/s_val.pt")
-    print("saved")
-    """
-    
     
     x_train = torch.load("data/musicnet_renorm_reclip/x_train.pt")
     s_train = torch.load("data/musicnet_renorm_reclip/s_train.pt")
@@ -57,6 +43,7 @@ if __name__ == "__main__":
     train_loader = DataLoader(train_dataset,args.batch_size)
     val_loader = DataLoader(val_dataset,args.batch_size)
     list_best_RMSE = []
+
     for latent_dim in latent_dims_list:
         encoder = AudioEncoder(args.T, latent_dim).to(device)  
         decoder = AudioDecoder(args.T, latent_dim, args.K).to(device)
@@ -68,6 +55,7 @@ if __name__ == "__main__":
 
         best_RMSE = train_and_give_best_RMSE(model, optimizer, train_loader, val_loader, device, latent_dim, args.nepochs, args.K, args.val, args.tensorboard + "/" + args.run)
         list_best_RMSE.append(best_RMSE)
+        
     plt.figure(figsize=(8, 6))
     plt.plot(latent_dims_list, list_best_RMSE, marker='o', linestyle='-', color='b', label='Best RMSE')
     plt.xlabel('Latent Dimensions', fontsize=12)
