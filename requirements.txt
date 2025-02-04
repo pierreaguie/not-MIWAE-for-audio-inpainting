@@ -2,3 +2,5 @@ numpy
 matplotlib
 torch
 torchaudio
+librosa
+soundfile

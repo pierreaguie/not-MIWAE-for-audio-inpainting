@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-from torch.optim import Optimizer, Adam
+from torch.optim import Optimizer
 from tqdm import tqdm
 import os
 import math

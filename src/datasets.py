@@ -1,15 +1,11 @@
 import torch
-from torch.utils.data import Dataset, DataLoader
-from torchaudio.datasets import MUSDB_HQ
+from torch.utils.data import Dataset
 import numpy as np
 import os
 import torchaudio
 from torchaudio.transforms import Resample
 import random
 from src.utils import soft_clipping, hard_clipping, normalize
-import time
-
-from torchvision import datasets, transforms
 
 
 class ClippedDataset(Dataset):

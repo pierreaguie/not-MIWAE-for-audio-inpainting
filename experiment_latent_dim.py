@@ -1,10 +1,8 @@
 import torch
-import torch.nn as nn
 from src.train_test import *
-from src.models import notMIWAE, LogisticMissingModel, AudioDecoder, AudioEncoder, notMIWAE, AbsoluteLogisticMissingModel
+from src.models import notMIWAE, AudioDecoder, AudioEncoder, notMIWAE, AbsoluteLogisticMissingModel
 from torch.utils.data import DataLoader
 from src.datasets import ClippedDataset
-from src.utils import normalize
 import argparse
 import matplotlib.pyplot as plt
 device = torch.device("cuda:0")
@@ -55,7 +53,7 @@ if __name__ == "__main__":
 
         best_RMSE = train_and_give_best_RMSE(model, optimizer, train_loader, val_loader, device, latent_dim, args.nepochs, args.K, args.val, args.tensorboard + "/" + args.run)
         list_best_RMSE.append(best_RMSE)
-        
+
     plt.figure(figsize=(8, 6))
     plt.plot(latent_dims_list, list_best_RMSE, marker='o', linestyle='-', color='b', label='Best RMSE')
     plt.xlabel('Latent Dimensions', fontsize=12)
