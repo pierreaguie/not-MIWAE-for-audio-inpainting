@@ -2,7 +2,7 @@
 
 This repository contains an implementation of not-MIWAE, based on [Ipsen et al. "not-MIWAE: Deep Generative Modelling with Missing not at Random Data"](https://arxiv.org/abs/2006.12871), applied to the task of audio declipping. Technical details on this implementation and experimental results can be found in [this report](assets/report/PGM_Report.pdf).
 
-## Run the code
+## Usage
 
 This implementation was written in Python 3.10.7 and uses PyTorch. To install the required Python libraries using pip, run
 
